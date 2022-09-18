@@ -132,21 +132,20 @@ DBI::dbDisconnect(con)
 #
 #
 # we will aggregate the data at daily level and lately at month level
-
-# # setting path to required data
-# path_input <- file.path(getwd(), "data/geo_political_risk")
-# path_gpr_data <- paste0(path_input, "/data_geo_political_risk_index_export.dta")
+#
 # 
 # # reading the required data
 # gpr_index_data_init <- haven::read_dta(path_gpr_data) 
 # 
-# # select only required variables
-# gpr_index_data <- gpr_index_data_init %>%  
-#   dplyr::select(month, GPR, GPRT, GPRA, GPRH, GPRHT, GPRHA, SHARE_GPR,
-#                 N10, SHARE_GPRH, N3H, GPRH_NOEW, GPR_NOEW, GPRH_AND,
-#                 GPR_AND, GPRH_BASIC, GPR_BASIC, SHAREH_CAT_1, SHAREH_CAT_2,
-#                 SHAREH_CAT_3, SHAREH_CAT_4, SHAREH_CAT_5, SHAREH_CAT_6,
-#                 SHAREH_CAT_7, SHAREH_CAT_8, GPRC_DEU)
+# The search is organized in eight categories: War Threats (Category 1), 
+# Peace Threats (Category 2), Military Buildups (Category 3), 
+# Nuclear Threats (Category 4), Terror Threats (Category 5), 
+# Beginning of War (Category 6), Escalation of War (Category 7), 
+# Terror Acts (Category 8). 
+# Based on the search groups above, Caldara and Iacoviello also constructs 
+# two subindexes. The Geopolitical Threats (GPRT) includes words belonging
+# to categories 1 to 5 above. The Geopolitical Acts (GPRA) index includes words
+# belonging to categories 6 to 8.
 
 
 # setting path to required data
@@ -157,10 +156,27 @@ gpr_index_data_init <- readxl::read_excel(path_gpr_data)
 View(gpr_index_data_init)
  
 # select only required variables
-gpr_index_data <- gpr_index_data_init %>%  
+gpr_index_data_init_2 <- gpr_index_data_init %>%  
   dplyr::select(-var_name, -var_label) %>%
   dplyr::mutate(date_month = lubridate::year(month)*100 + month(month)) %>%
   dplyr::filter(date_month >= 200101 & date_month <= 202112)
+
+# removing unnecessary variables
+gpr_index_data_init_3 <- gpr_index_data_init_2 %>%  
+  dplyr::select(-GPR, -GPRT, -GPRA, -SHARE_GPR, -SHARE_GPRH, -N10,
+                -N3H, -GPRH_NOEW, -GPR_NOEW, -GPR_AND,
+                -GPR_BASIC, -GPRC_DEU, -SHAREH_CAT_1, -SHAREH_CAT_2,
+                -SHAREH_CAT_3, -SHAREH_CAT_4, -SHAREH_CAT_5,
+                -SHAREH_CAT_6, -SHAREH_CAT_7, -SHAREH_CAT_8,
+                -GPRH_BASIC, -GPRH_AND
+  )
+
+# renaming variables of the data frame
+col.from <- colnames(gpr_index_data_init_3)
+col.to <- c("month", "GPR", "GPR_Threats", "GPR_Acts", "date_month")
+
+gpr_index_data <- gpr_index_data_init_3 %>%
+  rename_at(vars(col.from), function(x) col.to)
 
 # disconnect established connection
 DBI::dbDisconnect(con)
@@ -306,12 +322,14 @@ DBI::dbDisconnect(con)
 # 5. loading wind data data   ####
 #________________________________
 
-# - data on wind data (current production, from wind data)
+# - data on wind data (current production, from photo voltaic, wind data)
 # - data records from January 1980 to December 2019
+# Simulated hourly country-aggregated PV and wind capacity factors for Europe
 
 # setting path to required data
 path_input <- file.path(getwd(), "data/pv_wind")
-pv_wind_data_path <- paste0(path_input, "/ninja_pv_wind_profiles_singleindex.xlsx")
+pv_wind_data_path <- paste0(path_input, 
+                            "/ninja_pv_wind_profiles_singleindex.xlsx")
 
 # reading the required data 
 pv_wind_data_init <- readxl::read_excel(pv_wind_data_path)
@@ -342,14 +360,25 @@ pv_wind_data_init4 <- pv_wind_data_init3 %>%
     DE_pv_national_current = sum(DE_pv_national_current, na.rm = TRUE),
     DE_wind_national_current = sum(DE_wind_national_current, na.rm = TRUE),
     DE_wind_offshore_current = sum(DE_wind_offshore_current, na.rm = TRUE),
-    DE_wind_national_long_termfuture = sum(DE_wind_national_long_termfuture, na.rm = TRUE),
-    DE_wind_national_near_termfutur = sum(DE_wind_national_near_termfuture, na.rm = TRUE),
-    DE_wind_offshore_near_termfuture = sum(DE_wind_offshore_near_termfuture, na.rm = TRUE),
-    DE_wind_onshore_near_termfuture = sum(DE_wind_onshore_near_termfuture, na.rm = TRUE)
+    DE_wind_onshore_current = sum(DE_wind_onshore_current, na.rm = TRUE),
+    DE_wind_national_long_termfuture = sum(DE_wind_national_long_termfuture, 
+                                           na.rm = TRUE),
+    DE_wind_national_near_termfutur = sum(DE_wind_national_near_termfuture, 
+                                          na.rm = TRUE),
+    DE_wind_offshore_near_termfuture = sum(DE_wind_offshore_near_termfuture,
+                                           na.rm = TRUE),
+    DE_wind_onshore_near_termfuture = sum(DE_wind_onshore_near_termfuture, 
+                                          na.rm = TRUE)
     ) 
 
+# Removing unrequired variables
+pv_wind_data_init5 <- pv_wind_data_init4 %>%
+  dplyr::select(-DE_wind_national_long_termfuture, -DE_wind_national_near_termfutur,
+                -DE_wind_offshore_near_termfuture, 
+                -DE_wind_onshore_near_termfuture)
+
 # create final data frame
-pv_wind_data <- pv_wind_data_init4 %>%
+pv_wind_data <- pv_wind_data_init5 %>%
   filter(date_month_pw >= 200101 & date_month_pw <= 201912)
 
 # set path to input database
@@ -371,7 +400,96 @@ dbWriteTable(con, "pv_wind_data_ger_month", pv_wind_data,
 DBI::dbDisconnect(con)
 
 
-# 6. loading customer relation data   ####
+# 6. loading industry demand data   ####
+#________________________________
+
+# setting path to required data
+path_input <- file.path(getwd(), "data/vdma")
+industry_data_path <- paste0(path_input, 
+                            "/industry_demand_forecast.xlsx")
+
+# reading the required data 
+industry_demand_forecast_init <- readxl::read_excel(industry_data_path)
+
+# keep only required data
+industry_demand_forecast_init_2 <- industry_demand_forecast_init %>%
+  dplyr::select(Ind_Month_Code, Ind_Year, Ind_Year_2, Ind_Month, running_index,
+                DEU, ITA,  FRA, ESP, GBR, RUS, CHN, JPN, IND, KOR, USA,           
+                CAN, MEX, BRA, WLD) %>%
+  dplyr::mutate(Ind_Month_dmd = Ind_Year*100 + Ind_Month) %>%
+  dplyr::relocate(Ind_Month_dmd, .before =  Ind_Month_Code) %>%
+  dplyr::select(-Ind_Month_Code, -Ind_Year_2, -running_index)
+
+# renaming variables oft the data frame
+col.from <- colnames(industry_demand_forecast_init_2)
+col.to <- c("Ind_Month_Code_dmd", "Ind_Year_dmd",          
+            "Ind_Month_dmd", "DEU_dmd", "ITA_dmd", "FRA_dmd", "ESP_dmd",          
+            "GBR_dmd", "RUS_dmd", "CHN_dmd", "JPN_dmd","IND_dmd",
+            "KOR_dmd", "USA_dmd", "CAN_dmd", "MEX_dmd", "BRA_dmd", "WLD_dmd")
+
+industry_demand_forecast_init_3 <- industry_demand_forecast_init_2 %>%
+  rename_at(vars(col.from), function(x) col.to)
+
+industry_demand_forecast <- industry_demand_forecast_init_3
+    
+
+# list all tables
+tables <- dbListTables(con)
+tables
+
+# write the weather data into the dyn_pricing sqlite-db
+dbWriteTable(con, "industry_demand_forecast", industry_demand_forecast, 
+             overwrite = TRUE, row.names = FALSE)
+
+# disconnecting
+DBI::dbDisconnect(con)
+
+
+# 7. loading machine_production_index   ####
+#____________________________________
+
+# setting path to required data
+path_input <- file.path(getwd(), "data/vdma")
+production_index_data_path <- paste0(path_input, 
+                             "/production_index.xlsx")
+
+# reading the required data 
+production_index_data_init <- readxl::read_excel(production_index_data_path)
+
+# keep only required data
+production_index_data_init_2 <- production_index_data_init %>%
+  dplyr::select(Ind_Month_Code, Ind_Year, Ind_Year_2, Ind_Month, running_index,
+                DEU, ITA,  FRA, ESP, GBR, RUS, CHN, JPN, IND, KOR, USA,           
+                CAN, MEX, BRA, WLD) %>%
+  dplyr::mutate(Ind_Month_dmd = Ind_Year*100 + Ind_Month) %>%
+  dplyr::relocate(Ind_Month_dmd, .before =  Ind_Month_Code) %>%
+  dplyr::select(-Ind_Month_Code, -Ind_Year_2, -running_index)
+
+# renaming variables oft the data frame
+col.to <- c("Ind_Month_Code_prd_index", "Ind_Year_prd_index",          
+            "Ind_Month_prd_index", "DEU_prd_index", "ITA_prd_index",
+            "FRA_prd_index", "ESP_prd_index", "GBR_prd_index", "RUS_prd_index",
+            "CHN_prd_index", "JPN_prd_index","IND_prd_index","KOR_prd_index", 
+            "USA_prd_index", "CAN_prd_index", "MEX_prd_index", "BRA_prd_index", 
+            "WLD_prd_index")
+
+production_index_data_init_3 <- production_index_data_init_2 %>%
+  rename_at(vars(col.from), function(x) col.to)
+
+
+production_index_data <- production_index_data_init_3
+
+# list all tables
+tables <- dbListTables(con)
+tables
+
+# write the weather data into the dyn_pricing sqlite-db
+dbWriteTable(con, "production_index_data", production_index_data, 
+             overwrite = TRUE, row.names = FALSE)
+
+
+
+# 8. loading customer relation data   ####
 #__________________________________
 
 # - company size (small, medium, large)
