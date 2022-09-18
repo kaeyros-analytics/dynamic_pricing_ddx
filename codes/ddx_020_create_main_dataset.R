@@ -25,7 +25,7 @@ library(ggplot2)
 
 # check loaded packages
 loaded_packages <- as.data.frame(.packages())
-View(loaded_packages)
+# View(loaded_packages)
 
 
 # 1. loading internal and external data   ####
@@ -57,22 +57,39 @@ tables
 # load customer data into R-environment
 customers_data_init <- dbGetQuery(conn = con, 
           statement=paste("SELECT * FROM customers_data_ger_month", sep=""))
+          # 202112
 
-
-# load all external data
+# load gpr_index data
 gpr_index_data_init <- DBI::dbGetQuery(conn = con, 
       statement=paste("SELECT * FROM gpr_index_data_ger_month", sep=""))
-      # 202112
+         # 202112
 
+# load inflation rate data
 inflation_rate_data_init <- DBI::dbGetQuery(conn = con, 
     statement=paste("SELECT * FROM inflation_rate_data_ger_month", sep="")) 
-    # 202112
+        # 202112
 
+# load weather data
 weather_data_init <- DBI::dbGetQuery(conn = con, 
-    statement=paste("SELECT * FROM weather_data_ger_month", sep="")) # 201912
+    statement=paste("SELECT * FROM weather_data_ger_month", sep="")) 
+       # 201912
 
+# load energy production data
 pv_wind_data_init <- DBI::dbGetQuery(conn = con, 
-    statement=paste("SELECT * FROM pv_wind_data_ger_month", sep="")) # 201912
+    statement=paste("SELECT * FROM pv_wind_data_ger_month", sep="")) 
+     # 201912
+
+# load demand forecast data
+industry_demand_forecast_init <- DBI::dbGetQuery(conn = con, 
+   statement=paste("SELECT * FROM industry_demand_forecast", sep="")) 
+    # 201912
+
+# load production index data
+production_index_data_init <- DBI::dbGetQuery(conn = con, 
+     statement=paste("SELECT * FROM production_index_data", sep="")) 
+  # 201912
+
+
 
 # restrict the time frame from 2001-01 to 2019-12
 customers_data <- customers_data_init %>%
@@ -89,6 +106,16 @@ inflation_rate_data <- inflation_rate_data_init %>%
 pv_wind_data <- pv_wind_data_init %>%
   dplyr::filter(date_month_pw >= 200101 & date_month_pw <= 201912) %>%
   dplyr::rename("date_month" = "date_month_pw")
+
+industry_demand_forecast <- industry_demand_forecast_init %>%
+  dplyr::filter(Ind_Month_Code_dmd >= 200101 & 
+                  Ind_Month_Code_dmd <= 201912) %>%
+  dplyr::rename("date_month" = "Ind_Month_Code_dmd")
+
+production_index_data <- production_index_data_init %>%
+  dplyr::filter(Ind_Month_Code_prd_index >= 200101 & 
+                  Ind_Month_Code_prd_index <= 201912) %>%
+  dplyr::rename("date_month" = "Ind_Month_Code_prd_index")
 
 
 
@@ -108,9 +135,10 @@ dataset_intern_xtern <- customers_data %>%
   dplyr::left_join(gpr_index_data, by = "date_month") %>%
   dplyr::left_join(inflation_rate_data, by = "date_month") %>%
   dplyr::left_join(pv_wind_data, by = "date_month") %>%
-  dplyr::select(-GPR, -GPR_AND, -GPR_BASIC, -GPRC_DEU, -GPR_NOEW, -GPRT,
-                -GPRA, -SHARE_GPR, -SHARE_GPR, )
+  dplyr::left_join(industry_demand_forecast, by = "date_month") %>%
+  dplyr::left_join(production_index_data, by = "date_month") #%>%
 
+# 68400  observations of 56 variables
 
 # write the weather data into the dyn_pricing sqlite-db
 dbWriteTable(con, "dataset_intern_xtern", dataset_intern_xtern, 
