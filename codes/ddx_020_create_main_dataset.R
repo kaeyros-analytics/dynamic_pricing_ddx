@@ -117,6 +117,12 @@ production_index_data <- production_index_data_init %>%
                   Ind_Month_Code_prd_index <= 201912) %>%
   dplyr::rename("date_month" = "Ind_Month_Code_prd_index")
 
+weather_data <- weather_data_init %>%
+  dplyr::filter(temp_month >= 200101 & 
+                  temp_month <= 201912) %>%
+  dplyr::rename("date_month" = "temp_month")
+
+
 
 
 # 2. combine internal and external data sources  ####
@@ -136,7 +142,8 @@ dataset_intern_xtern <- customers_data %>%
   dplyr::left_join(inflation_rate_data, by = "date_month") %>%
   dplyr::left_join(pv_wind_data, by = "date_month") %>%
   dplyr::left_join(industry_demand_forecast, by = "date_month") %>%
-  dplyr::left_join(production_index_data, by = "date_month") #%>%
+  dplyr::left_join(production_index_data, by = "date_month") %>%
+  dplyr::left_join(weather_data, by = "date_month")
 
 # 68400  observations of 56 variables
 
